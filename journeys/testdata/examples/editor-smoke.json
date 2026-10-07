@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "name": "editor-smoke",
+  "description": "Open a text editor, type a line, and verify it appears — the minimal UI smoke test every server's examples start from.",
+  "steps": [
+    {
+      "name": "open the editor",
+      "verb": "open_app",
+      "app": "TextEdit",
+      "assertions": [
+        {
+          "subject": "window.title",
+          "operator": "contains",
+          "expected": "Untitled",
+          "message": "the editor window is in the foreground",
+          "wait": { "timeout": 15 }
+        }
+      ],
+      "evidence": [ "editor opened" ]
+    },
+    {
+      "name": "type a line",
+      "verb": "type_text",
+      "text": "hello from an mcp-server-core journey",
+      "assertions": [
+        {
+          "subject": "screen.text",
+          "operator": "contains",
+          "expected": "hello from an mcp-server-core journey",
+          "message": "the typed text is present in the document"
+        }
+      ],
+      "evidence": [ "text typed" ]
+    }
+  ],
+  "expected_evidence": [ "editor opened", "text typed" ]
+}
