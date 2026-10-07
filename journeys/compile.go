@@ -250,6 +250,13 @@ func lowerStep(s Step, i int) ([]plan.Step, error) {
 	return nil, fmt.Errorf("%w: %q", ErrUnknownVerb, s.Verb)
 }
 
+// CloseWindowShortcut is the keyboard chord close_window lowers to. It is the
+// one platform-specific fact in the journey vocabulary: Alt+F4 closes a
+// window on Windows and nothing on macOS, where it is Cmd+W. A server sets
+// it once at init so a journey authored on either platform closes windows
+// the native way.
+var CloseWindowShortcut = "alt+f4"
+
 // closeWindowSteps focuses the window, then closes it.
 //
 // The second step carries an explicit target because the lowering loses what the
@@ -266,7 +273,7 @@ func closeWindowSteps(name, window string) []plan.Step {
 	closer := plan.Step{
 		Name: name,
 		Tool: toolShortcut,
-		Args: map[string]any{"shortcut": "alt+f4"},
+		Args: map[string]any{"shortcut": CloseWindowShortcut},
 	}
 	derived, _ := plan.DeriveTargets(closer)
 	closer.Targets = slices.Concat(derived, []plan.Target{
