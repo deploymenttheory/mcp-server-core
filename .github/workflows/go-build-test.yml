@@ -1,0 +1,84 @@
+name: go | Build & Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/go-build-test.yml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'schema/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: '🧪 Build & Test'
+    # Platform-free by design: nothing in this module carries a build tag, so
+    # the cheapest runner proves the whole thing. The servers that import it
+    # (windows-mcp-server, macos-mcp-server) test their platform halves on
+    # their own runners.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache-dependency-path: 'go.sum'
+          cache: true
+
+      - name: Verify modules and tidiness
+        run: |
+          go mod download
+          go mod verify
+          go mod tidy -diff
+
+      # agentweave-harness is developed in lockstep with the servers, so working
+      # branches may point it at a local checkout. A replace directive that
+      # reaches main would make a tag build against code no tag describes.
+      - name: Refuse replace directives
+        run: |
+          if grep -E '^replace ' go.mod; then
+            echo 'go.mod carries a replace directive; pin a published tag instead.' >&2
+            exit 1
+          fi
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./... -count=1 -race
+
+      # The build-tagged conformance side must compile and test too; the servers
+      # rely on it for their loopback hosts.
+      - name: Build and test (conformance tag)
+        run: |
+          go build -tags conformance ./...
+          go test -tags conformance ./... -count=1
+
+      # Nothing here may be platform-specific: a build tag anywhere would mean a
+      # server's CI, not this one, is the thing proving the file compiles.
+      - name: Refuse build tags
+        run: |
+          if grep -rl --include='*.go' -E '^//go:build (windows|darwin|linux)' . ; then
+            echo 'platform build tags are not allowed in mcp-server-core' >&2
+            exit 1
+          fi

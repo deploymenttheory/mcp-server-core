@@ -1,0 +1,17 @@
+# Binaries and build output
+/bin/
+/dist/
+*.test
+*.out
+coverage.*
+
+# Editor and OS noise
+.DS_Store
+.vscode/
+.idea/
+.claude/
+.cursor/
+
+# Local workspace overrides never ship
+go.work
+go.work.sum
