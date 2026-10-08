@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.1](https://github.com/deploymenttheory/mcp-server-core/compare/v0.2.0...v0.2.1) (2026-10-08)
+
+
+### Features
+
+* **conformance:** fixtures, loopback host and recover middleware for the official suite ([586432c](https://github.com/deploymenttheory/mcp-server-core/commit/586432c731cb236ee441f1630ffdd6a27933913d))
+* **journeys:** make the close_window chord a server-set knob ([f874e76](https://github.com/deploymenttheory/mcp-server-core/commit/f874e76872d0e844a74d76ec7bc623f83d3bb660))
+* **runtime:** let an enforcer describe its applied tier in the audit record ([d13e236](https://github.com/deploymenttheory/mcp-server-core/commit/d13e236b9ef7e45f07b231ca817410677731bb36))
+
+
+### Bug Fixes
+
+* **deps:** resolve the merge markers left in go.mod ([4e88c5b](https://github.com/deploymenttheory/mcp-server-core/commit/4e88c5be85ac28b929f8e13e41cfd2de72d38e69))
+* repair go.mod and land the conformance package, close_window knob and enforcement describer ([fa17021](https://github.com/deploymenttheory/mcp-server-core/commit/fa17021fbc2bd013ae07a8aa1441ecffbf86c1ef))
+
 ## [0.2.0](https://github.com/deploymenttheory/mcp-server-core/compare/v0.1.0...v0.2.0) (2026-10-08)
 
 
