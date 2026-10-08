@@ -154,10 +154,10 @@ func ProvisionEgress(
 		return nil, noop, noop, fmt.Errorf("apply egress enforcement: %w", err)
 	}
 	if wantsEnforcement {
-		_, _ = auditLog.Append("egress.enforce.applied", map[string]any{
+		_, _ = auditLog.Append("egress.enforce.applied", enforcementRecord(enforcer, map[string]any{
 			"enforcement":  cfg.Enforcement(),
 			"applications": len(cfg.Applications),
-		})
+		}))
 	}
 
 	_, _ = auditLog.Append("egress.started", map[string]any{
@@ -256,11 +256,11 @@ func provisionDelegatedEgress(
 		return nil, noop, noop, fmt.Errorf("apply egress enforcement: %w", err)
 	}
 	if wantsEnforcement {
-		_, _ = auditLog.Append("egress.enforce.applied", map[string]any{
+		_, _ = auditLog.Append("egress.enforce.applied", enforcementRecord(enforcer, map[string]any{
 			"enforcement":  cfg.Enforcement(),
 			"applications": len(cfg.Applications),
 			"proxied_by":   "harness",
-		})
+		}))
 	}
 	_, _ = auditLog.Append("egress.delegated", map[string]any{
 		"proxy":       proxyAddr,
@@ -330,4 +330,21 @@ func EgressStatus(svc *egress.Service, cfg policy.EgressPolicy) *status.EgressSt
 		DeniedHost:    c.DeniedHost,
 		DeniedAddress: c.DeniedAddress,
 	}
+}
+
+// EnforcementDescriber is implemented by an enforcer whose tiers differ from
+// the policy's words: it adds the OS reading to the egress.enforce.applied
+// record (pf, for one, scopes by uid rather than by application).
+type EnforcementDescriber interface {
+	Describe() map[string]any
+}
+
+// enforcementRecord merges the enforcer's description into the audit payload.
+func enforcementRecord(enforcer egress.Enforcer, payload map[string]any) map[string]any {
+	if d, ok := enforcer.(EnforcementDescriber); ok {
+		for k, v := range d.Describe() {
+			payload[k] = v
+		}
+	}
+	return payload
 }
