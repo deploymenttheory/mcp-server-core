@@ -10,7 +10,7 @@ import (
 )
 
 // RecordingTransport wraps an mcp.Transport and records every JSON-RPC frame that
-// crosses it, so conformance scoring can validate what a client actually receives
+// crosses it, so the product spec gate can validate what a client actually receives
 // rather than a re-marshalling of our Go types.
 //
 // This exists because the SDK's client-side accessors normalize results: on
@@ -39,6 +39,7 @@ type FrameLog struct {
 	// methodByID records the method each outbound request used, so a response can
 	// be attributed to a method (JSON-RPC replies carry only the id).
 	methodByID map[string]string
+	requestIDs []string
 }
 
 func NewFrameLog() *FrameLog {
@@ -53,7 +54,8 @@ func NewFrameLog() *FrameLog {
 func (f *FrameLog) ResultFor(method string) (json.RawMessage, bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for id, m := range f.methodByID {
+	for _, id := range f.requestIDs {
+		m := f.methodByID[id]
 		if m != method {
 			continue
 		}
@@ -79,13 +81,33 @@ func (f *FrameLog) Methods() []string {
 	return out
 }
 
+// ResultsByMethod returns successful raw results in request order. It is used
+// by protocol probes so the schema gate validates server bytes, not values
+// reconstructed by the client SDK.
+func (f *FrameLog) ResultsByMethod() map[string][]json.RawMessage {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string][]json.RawMessage)
+	for _, id := range f.requestIDs {
+		result, ok := f.responses[id]
+		if !ok {
+			continue
+		}
+		method := f.methodByID[id]
+		out[method] = append(out[method], append(json.RawMessage(nil), result...))
+	}
+	return out
+}
+
 func (f *FrameLog) record(msg jsonrpc.Message) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	switch m := msg.(type) {
 	case *jsonrpc.Request:
 		if m.ID.IsValid() { // a call, not a notification
-			f.methodByID[idKey(m.ID)] = m.Method
+			id := idKey(m.ID)
+			f.methodByID[id] = m.Method
+			f.requestIDs = append(f.requestIDs, id)
 		}
 	case *jsonrpc.Response:
 		if m.ID.IsValid() && m.Result != nil {

@@ -46,6 +46,18 @@ func fixturePrompt() inventory.ServerPrompt {
 	}
 }
 
+func fixtureResource() inventory.ServerResource {
+	return inventory.NewServerResource(tsScreen, mcp.Resource{
+		Name: "state", URI: "fixture://state", MIMEType: "text/plain",
+	}, func(any) mcp.ResourceHandler {
+		return func(context.Context, *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+			return &mcp.ReadResourceResult{Contents: []*mcp.ResourceContents{{
+				URI: "fixture://state", MIMEType: "text/plain", Text: "ready",
+			}}}, nil
+		}
+	})
+}
+
 func fixtureInventory(t *testing.T, toolsets []string) *inventory.Inventory {
 	t.Helper()
 	inv, err := inventory.NewBuilder().
@@ -55,6 +67,7 @@ func fixtureInventory(t *testing.T, toolsets []string) *inventory.Inventory {
 			fixtureTool("FileSystem", tsFiles, false),
 		}).
 		SetPrompts([]inventory.ServerPrompt{fixturePrompt()}).
+		SetFixedResources([]inventory.ServerResource{fixtureResource()}).
 		WithToolsets(toolsets).
 		WithServerInstructions().
 		Build()

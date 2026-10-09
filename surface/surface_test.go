@@ -201,6 +201,18 @@ func TestServedSurfaceValidatesAgainstTheNewestRevision(t *testing.T) {
 	if err := spec.ValidateJSON("ListToolsResult", got.ToolsListResult); err != nil {
 		t.Errorf("tools/list result does not validate: %v", err)
 	}
+	for _, result := range []struct {
+		name string
+		raw  json.RawMessage
+	}{
+		{"ListPromptsResult", got.PromptsListResult},
+		{"ListResourcesResult", got.ResourcesListResult},
+		{"ListResourceTemplatesResult", got.ResourceTemplatesListResult},
+	} {
+		if err := spec.ValidateJSON(result.name, result.raw); err != nil {
+			t.Errorf("%s does not validate: %v", result.name, err)
+		}
+	}
 	if err := spec.ValidateJSON("ServerCapabilities", got.Capabilities); err != nil {
 		t.Errorf("server capabilities do not validate: %v", err)
 	}
@@ -228,6 +240,21 @@ func TestCaptureRecordsTheWireNotTheSDKView(t *testing.T) {
 	for _, field := range []string{"resultType", "cacheScope", "ttlMs", "supportedVersions"} {
 		if _, ok := hs[field]; !ok {
 			t.Errorf("captured handshake is missing %q", field)
+		}
+	}
+	for method, raw := range map[string]json.RawMessage{
+		"tools/list":               got.ToolsListResult,
+		"prompts/list":             got.PromptsListResult,
+		"resources/list":           got.ResourcesListResult,
+		"resources/templates/list": got.ResourceTemplatesListResult,
+	} {
+		var result map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &result); err != nil {
+			t.Errorf("%s: decode raw result: %v", method, err)
+			continue
+		}
+		if _, ok := result["resultType"]; !ok {
+			t.Errorf("%s: raw result lacks resultType", method)
 		}
 	}
 }
