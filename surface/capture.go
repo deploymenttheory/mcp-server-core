@@ -25,11 +25,9 @@ const captureTimeout = 30 * time.Second
 // a project's hand-written tool schemas, the SDK's serialization, and the
 // published spec.
 //
-// The authority on conformance is the official suite, run against the loopback
-// HTTP host. This capture serves two narrower purposes: a fast offline pass/fail
-// check against the vendored schemas, so `go test` means something on a machine
-// without Node; and the reference side of the equivalence test that lets evidence
-// gathered over HTTP transfer to the shipped stdio binary.
+// This capture is the input to the product spec gate. It validates the actual
+// registered surface and safe method results against the published schema. It
+// also provides the reference side of the optional HTTP host equivalence test.
 type Captured struct {
 	// ToolsListResult is the tools/list result as served.
 	ToolsListResult json.RawMessage
@@ -69,9 +67,8 @@ const (
 // two always-served guardrail tools are registered here with inert handlers so
 // they are part of the scored manifest, exactly as a served session has them.
 //
-// tools/list never invokes a tool handler, so the dependency set the surface
-// was built with may carry a nil engine; a handler call here would be a bug,
-// not a supported path.
+// Capture without probes only lists definitions, so its dependency set may
+// carry a nil engine. CaptureWithProbes may call handlers chosen by the caller.
 func Capture(ctx context.Context, s *Surface, inv *inventory.Inventory, deps any, clientVersion string) (Captured, error) {
 	return CaptureWithProbes(ctx, s, inv, deps, clientVersion, nil)
 }

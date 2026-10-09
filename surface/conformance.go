@@ -63,6 +63,16 @@ func ValidateCaptured(spec *mcpspec.Spec, got Captured) error {
 			problems = append(problems, fmt.Errorf("%s: decode list: %w", item.definition, err))
 			continue
 		}
+		var cursor string
+		if len(payload["nextCursor"]) > 0 {
+			if err := json.Unmarshal(payload["nextCursor"], &cursor); err != nil {
+				problems = append(problems, fmt.Errorf("%s: decode nextCursor: %w", item.definition, err))
+				continue
+			}
+			if cursor != "" {
+				problems = append(problems, fmt.Errorf("%s: paginated list requires a full-page capture before it can pass the product gate", item.definition))
+			}
+		}
 		var members []json.RawMessage
 		if err := json.Unmarshal(payload[item.field], &members); err != nil {
 			problems = append(problems, fmt.Errorf("%s: decode %s: %w", item.definition, item.field, err))

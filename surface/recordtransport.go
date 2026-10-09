@@ -10,7 +10,7 @@ import (
 )
 
 // RecordingTransport wraps an mcp.Transport and records every JSON-RPC frame that
-// crosses it, so conformance scoring can validate what a client actually receives
+// crosses it, so the product spec gate can validate what a client actually receives
 // rather than a re-marshalling of our Go types.
 //
 // This exists because the SDK's client-side accessors normalize results: on
@@ -54,7 +54,8 @@ func NewFrameLog() *FrameLog {
 func (f *FrameLog) ResultFor(method string) (json.RawMessage, bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for id, m := range f.methodByID {
+	for _, id := range f.requestIDs {
+		m := f.methodByID[id]
 		if m != method {
 			continue
 		}

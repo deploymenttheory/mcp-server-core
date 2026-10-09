@@ -29,6 +29,15 @@ func TestValidateCapturedChecksTheActualSurface(t *testing.T) {
 	if err := json.Unmarshal(got.ToolsListResult, &listed); err != nil {
 		t.Fatal(err)
 	}
+	listed["nextCursor"] = json.RawMessage(`"more"`)
+	got.ToolsListResult, err = json.Marshal(listed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateCaptured(spec, got); err == nil || !strings.Contains(err.Error(), "paginated list") {
+		t.Fatalf("partial advertised tool list was accepted: %v", err)
+	}
+	delete(listed, "nextCursor")
 	var tools []map[string]any
 	if err := json.Unmarshal(listed["tools"], &tools); err != nil {
 		t.Fatal(err)
