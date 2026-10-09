@@ -39,6 +39,7 @@ type FrameLog struct {
 	// methodByID records the method each outbound request used, so a response can
 	// be attributed to a method (JSON-RPC replies carry only the id).
 	methodByID map[string]string
+	requestIDs []string
 }
 
 func NewFrameLog() *FrameLog {
@@ -79,13 +80,33 @@ func (f *FrameLog) Methods() []string {
 	return out
 }
 
+// ResultsByMethod returns successful raw results in request order. It is used
+// by protocol probes so the schema gate validates server bytes, not values
+// reconstructed by the client SDK.
+func (f *FrameLog) ResultsByMethod() map[string][]json.RawMessage {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string][]json.RawMessage)
+	for _, id := range f.requestIDs {
+		result, ok := f.responses[id]
+		if !ok {
+			continue
+		}
+		method := f.methodByID[id]
+		out[method] = append(out[method], append(json.RawMessage(nil), result...))
+	}
+	return out
+}
+
 func (f *FrameLog) record(msg jsonrpc.Message) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	switch m := msg.(type) {
 	case *jsonrpc.Request:
 		if m.ID.IsValid() { // a call, not a notification
-			f.methodByID[idKey(m.ID)] = m.Method
+			id := idKey(m.ID)
+			f.methodByID[id] = m.Method
+			f.requestIDs = append(f.requestIDs, id)
 		}
 	case *jsonrpc.Response:
 		if m.ID.IsValid() && m.Result != nil {

@@ -33,6 +33,15 @@ const captureTimeout = 30 * time.Second
 type Captured struct {
 	// ToolsListResult is the tools/list result as served.
 	ToolsListResult json.RawMessage
+	// These lists are captured from the server's raw replies, before the client
+	// SDK can normalize or discard fields.
+	PromptsListResult           json.RawMessage
+	ResourcesListResult         json.RawMessage
+	ResourceTemplatesListResult json.RawMessage
+	// Results contains every successful raw reply, grouped by request method.
+	// Optional probes can add tools/call, prompts/get, resources/read and
+	// completion/complete replies without changing production registration.
+	Results map[string][]json.RawMessage
 	// HandshakeResult is the server/discover result (or, before 2026-07-28, the
 	// initialize result) as served.
 	HandshakeResult json.RawMessage
@@ -64,6 +73,16 @@ const (
 // was built with may carry a nil engine; a handler call here would be a bug,
 // not a supported path.
 func Capture(ctx context.Context, s *Surface, inv *inventory.Inventory, deps any, clientVersion string) (Captured, error) {
+	return CaptureWithProbes(ctx, s, inv, deps, clientVersion, nil)
+}
+
+// ProbeFunc makes safe, product-specific MCP calls over the same session used
+// for capture. Callers choose arguments that cannot actuate the desktop in CI.
+type ProbeFunc func(context.Context, *mcp.ClientSession) error
+
+// CaptureWithProbes captures the advertised surface and optional method replies
+// from the real registered handlers over an in-memory MCP session.
+func CaptureWithProbes(ctx context.Context, s *Surface, inv *inventory.Inventory, deps any, clientVersion string, probe ProbeFunc) (Captured, error) {
 	var in Captured
 	server := s.Server
 	inv.RegisterAll(ctx, server, deps)
@@ -105,9 +124,23 @@ func Capture(ctx context.Context, s *Surface, inv *inventory.Inventory, deps any
 		return in, fmt.Errorf("no initialize result captured") //nolint:err113 // local sentinel not needed
 	}
 
-	tools, err := cs.ListTools(ctx, nil)
+	_, err = cs.ListTools(ctx, nil)
 	if err != nil {
 		return in, fmt.Errorf("list tools: %w", err)
+	}
+	if _, err := cs.ListPrompts(ctx, nil); err != nil {
+		return in, fmt.Errorf("list prompts: %w", err)
+	}
+	if _, err := cs.ListResources(ctx, nil); err != nil {
+		return in, fmt.Errorf("list resources: %w", err)
+	}
+	if _, err := cs.ListResourceTemplates(ctx, nil); err != nil {
+		return in, fmt.Errorf("list resource templates: %w", err)
+	}
+	if probe != nil {
+		if err := probe(ctx, cs); err != nil {
+			return in, fmt.Errorf("probe server methods: %w", err)
+		}
 	}
 
 	// Prefer the recorded wire result. On 2026-07-28 the handshake is
@@ -122,15 +155,59 @@ func Capture(ctx context.Context, s *Surface, inv *inventory.Inventory, deps any
 	} else if in.HandshakeResult, err = json.Marshal(initResult); err != nil {
 		return in, fmt.Errorf("marshal handshake result: %w", err)
 	}
-	if initResult.Capabilities != nil {
-		if in.Capabilities, err = json.Marshal(initResult.Capabilities); err != nil {
-			return in, fmt.Errorf("marshal capabilities: %w", err)
+	var handshake struct {
+		Capabilities json.RawMessage `json:"capabilities"`
+	}
+	if err := json.Unmarshal(in.HandshakeResult, &handshake); err != nil {
+		return in, fmt.Errorf("decode handshake capabilities: %w", err)
+	}
+	if len(handshake.Capabilities) == 0 {
+		return in, fmt.Errorf("handshake did not advertise capabilities")
+	}
+	in.Capabilities = handshake.Capabilities
+	for _, result := range []struct {
+		method string
+		out    *json.RawMessage
+	}{
+		{"tools/list", &in.ToolsListResult},
+		{"prompts/list", &in.PromptsListResult},
+		{"resources/list", &in.ResourcesListResult},
+		{"resources/templates/list", &in.ResourceTemplatesListResult},
+	} {
+		raw, ok := frames.ResultFor(result.method)
+		if !ok {
+			return in, fmt.Errorf("no raw %s result captured", result.method)
 		}
+		*result.out = raw
 	}
-	if in.ToolsListResult, err = json.Marshal(tools); err != nil {
-		return in, fmt.Errorf("marshal tools/list result: %w", err)
-	}
+	in.Results = frames.ResultsByMethod()
 
 	in.NegotiatedVersion = initResult.ProtocolVersion
 	return in, nil
+}
+
+// CaptureRawResults runs safe probes against a server whose handlers the caller
+// registers, returning the replies after the SDK has applied wire decoration.
+// It is useful for OS-backed result constructors that cannot invoke a desktop
+// action on CI but still need to prove their emitted protocol shape.
+func CaptureRawResults(ctx context.Context, server *mcp.Server, probe ProbeFunc) (map[string][]json.RawMessage, error) {
+	ctx, cancel := context.WithTimeout(ctx, captureTimeout)
+	defer cancel()
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	frames := NewFrameLog()
+	ss, err := server.Connect(ctx, serverTransport, nil)
+	if err != nil {
+		return nil, fmt.Errorf("connect server: %w", err)
+	}
+	defer func() { _ = ss.Close() }()
+	client := mcp.NewClient(&mcp.Implementation{Name: "spec-check", Version: "test"}, nil)
+	cs, err := client.Connect(ctx, &RecordingTransport{Inner: clientTransport, Frames: frames}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("connect client: %w", err)
+	}
+	defer func() { _ = cs.Close() }()
+	if err := probe(ctx, cs); err != nil {
+		return nil, fmt.Errorf("probe server: %w", err)
+	}
+	return frames.ResultsByMethod(), nil
 }
