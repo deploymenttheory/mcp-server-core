@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/deploymenttheory/mcp-server-core/compare/v0.2.1...v0.2.2) (2026-10-09)
+
+
+### Features
+
+* validate captured MCP product surfaces ([#21](https://github.com/deploymenttheory/mcp-server-core/issues/21)) ([2ee083b](https://github.com/deploymenttheory/mcp-server-core/commit/2ee083bd8636f5cab4bce978bd0451a670cf801d))
+
 ## [0.2.1](https://github.com/deploymenttheory/mcp-server-core/compare/v0.2.0...v0.2.1) (2026-10-08)
 
 
