@@ -1,7 +1,7 @@
-github.com/deploymenttheory/agentweave-harness v1.0.0 h1:dWwiWRAsDwmYUlYuyFNdq0UpCqPtEPKxrM9HDmgWgIA=
-github.com/deploymenttheory/agentweave-harness v1.0.0/go.mod h1:DgW0MwkJ71dNJIfhLkajyRCfGqWnB2KUJ2yTVHiBlKk=
-github.com/deploymenttheory/go-bindings-win32 v0.2.1 h1:mApZJdaGj636R5lLwSPIIdA+6hKPewtdg8VpePc5VBA=
-github.com/deploymenttheory/go-bindings-win32 v0.2.1/go.mod h1:UCwSCOc2LcmtnGEQFuhyDZ9pFjMdpxvOhR4MsjOji94=
+github.com/deploymenttheory/agentweave-harness v1.0.1 h1:PV86HQ5uhhrPD8GbAW3MZWPXqU+uXmtbgY4AnPeRF+Y=
+github.com/deploymenttheory/agentweave-harness v1.0.1/go.mod h1:S02ZzdZjO4sO5khEbSUolETBu1nrYDGMxmmR/hkbQh4=
+github.com/deploymenttheory/go-bindings-win32 v0.5.0 h1:B5qu2L+XvQRPe0/ni7Q9PAu3j3it94cyDJjGTeMLG/o=
+github.com/deploymenttheory/go-bindings-win32 v0.5.0/go.mod h1:J3mOfF0N1uFmI8Cm3GPtq1YJYnwAKUkOsmc36GYbm0w=
 github.com/golang-jwt/jwt/v5 v5.3.1 h1:kYf81DTWFe7t+1VvL7eS+jKFVWaUnK9cB1qbwn63YCY=
 github.com/golang-jwt/jwt/v5 v5.3.1/go.mod h1:fxCRLWMO43lRc8nhHWY6LGqRcf+1gQWArsqaEUEa5bE=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
